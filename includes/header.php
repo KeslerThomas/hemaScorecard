@@ -55,6 +55,7 @@ if(    ALLOW['EVENT_MANAGEMENT'] == true
 
 	<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 	<script>google.charts.load('current', {'packages':['corechart']});</script>
+	<script src="https://cdn.tiny.cloud/1/ctrvec03t4hztqmygiaf7d6mtiod1qat9px92nlsxdq2mat3/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
 
 	<link rel='icon' href='includes\images\favicon.png'>
 
@@ -632,7 +633,7 @@ function displayEventAnnouncements(){
 
 			$a['message'] = 'There are ties between the following fighters:<ul>';
 			foreach($tiedFighters as $fighter){
-				$a['message'] .= "<li>{$fighter}a</li>";
+				$a['message'] .= "<li>{$fighter}</li>";
 			}
 			$a['message'] .= "</ul>Scorecard has used all specified tiebreakers
 				and can not resolve the results. Place has been assigned randomly,

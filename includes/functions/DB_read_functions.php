@@ -318,6 +318,181 @@ function hemaRatings_isEventInfoComplete($eventID, $hemaRatingInfo = null){
 
 /******************************************************************************/
 
+function ferrotas_createTournamentResultsCsv($tournamentID, $dir = "exports/"){
+// Creates a .csv file with the results of all tournament matches
+
+	$tournamentID = (int)$tournamentID;
+
+	$bracketPlacings = [];
+	$place = 1;
+
+	$sql = "SELECT groupID, groupName
+			FROM eventGroups
+			WHERE tournamentID = {$tournamentID}
+			AND groupType = 'elim'";
+	$groups = mysqlQuery($sql, KEY, 'groupName');
+
+	$primaryBracketID = $groups['winner']['groupID'];
+	$secondaryBracketID = @$groups['loser']['groupID']; // may not exist if there is no loser bracket
+
+
+	$sql = "SELECT matchID, fighter1ID, fighter2ID, winnerID, bracketPosition, bracketLevel
+			FROM eventMatches
+			WHERE eventMatches.groupID = {$primaryBracketID}
+			AND placeholderMatchID IS NULL
+			ORDER BY bracketLevel ASC, bracketPosition ASC";
+	$primaryMatches = (array)mysqlQuery($sql, ASSOC);
+
+	$sql = "SELECT matchID, fighter1ID, fighter2ID, winnerID, bracketPosition, bracketLevel
+			FROM eventMatches
+			WHERE eventMatches.groupID = {$secondaryBracketID}
+			AND bracketLevel = 1
+			AND bracketPosition = 1
+			AND placeholderMatchID IS NULL";
+	$bronzeMatch = (array)mysqlQuery($sql, SINGLE);
+
+	if(isset($bronzeMatch['winnerID']) == true){
+		$isBronzeMatch = true;
+		$bronzeWinnerID = (int)$bronzeMatch['winnerID'];
+
+		if($bronzeWinnerID == $bronzeMatch['fighter1ID']){
+
+			$bronzeLoserID = $bronzeMatch['fighter2ID'];
+
+		} elseif($bronzeWinnerID == $bronzeMatch['fighter2ID']){
+
+			$bronzeLoserID = $bronzeMatch['fighter1ID'];
+
+		} else {
+
+			$bronzeLoserID = 0;
+		}
+
+	} else {
+		$isBronzeMatch = false;
+	}
+
+	$numMatches = sizeof($primaryMatches);
+	$losersAtLevel = [];
+	foreach($primaryMatches as $index => $match){
+
+		$winnerID = (int)$match['winnerID'];
+
+		if($winnerID == $match['fighter1ID']){
+
+			$loserID = $match['fighter2ID'];
+
+		} elseif($winnerID == $match['fighter2ID']){
+
+			$loserID = $match['fighter1ID'];
+
+		} else {
+
+			$loserID = 0;
+		}
+
+
+		if($match['bracketLevel'] == 1){
+
+			$bracketPlacings[$place] = $winnerID;
+			$place++;
+			$assignedFighters[$winnerID] = true;
+
+			$bracketPlacings[$place] = $loserID;
+			$place++;
+			$assignedFighters[$loserID] = true;
+
+			if($isBronzeMatch == true){
+
+				$bracketPlacings[$place] = $bronzeWinnerID;
+				$place++;
+				$assignedFighters[$bronzeWinnerID] = true;
+
+				$bracketPlacings[$place] = $bronzeLoserID;
+				$place++;
+				$assignedFighters[$bronzeLoserID] = true;
+
+			}
+
+			continue;
+
+		} elseif ($isBronzeMatch == true && $match['bracketLevel'] == 2){
+
+			continue;
+		}
+
+		$losersAtLevel[] = $loserID;
+
+
+		if(		isset($primaryMatches[$index+1]['bracketLevel']) == false
+			|| 	$match['bracketLevel'] != $primaryMatches[$index+1]['bracketLevel']){
+
+
+			$rosterIDs = implode2int($losersAtLevel);
+
+			$sql = "SELECT rosterID
+					FROM eventStandings
+					WHERE rosterID IN ({$rosterIDs})
+					AND tournamentID = {$tournamentID}
+					ORDER BY rank ASC";
+			$sortedRosterIDs = (array)mysqlQuery($sql, SINGLES, 'rosterID');
+
+			foreach($sortedRosterIDs as $rosterID){
+				$bracketPlacings[$place] = $rosterID;
+				$place++;
+				$assignedFighters[$rosterID] = true;
+			}
+
+			$losersAtLevel = [];
+		}
+
+	}
+
+	$rosterIDsPlaced = implode2int($bracketPlacings);
+
+	$sql = "SELECT rosterID
+			FROM eventStandings
+			WHERE rosterID NOT IN ({$rosterIDsPlaced})
+			AND tournamentID = {$tournamentID}
+			ORDER BY rank ASC";
+	$sortedRosterIDs = (array)mysqlQuery($sql, SINGLES, 'rosterID');
+
+	foreach($sortedRosterIDs as $rosterID){
+		$bracketPlacings[$place] = $rosterID;
+		$place++;
+	}
+
+// Create the CSV file
+	$tournamentName = getTournamentName($tournamentID);
+	$fileName = "{$dir}{$tournamentName}.csv";
+	$fp = fopen($fileName, 'w');
+
+	foreach($bracketPlacings as $place => $rosterID){
+
+		$name = getFighterName($rosterID);
+		$schoolName = getFighterSchoolName($rosterID);
+
+		$fields = [$place, $name, $schoolName];
+
+		$comma = ',';
+
+		foreach($fields as $index => $field){
+			if ($index == sizeof($fields)-1){
+				$comma = null;
+			}
+			fputs($fp, $field.$comma);
+		}
+		fputs($fp, PHP_EOL);
+
+	}
+	fclose($fp);
+
+	return $fileName;
+
+}
+
+/******************************************************************************/
+
 function hemaRatings_createTournamentResultsCsv($tournamentID, $dir = "exports/"){
 // Creates a .csv file with the results of all tournament matches
 // Format: | Name1 | Name2 | Result1 | Result2 | Stage of Tournament |
@@ -3120,7 +3295,7 @@ function getNumMatchScoringExchanges($matchID){
 			FROM eventExchanges
 			WHERE matchID = {$matchID}
 			AND exchangeType IN {$validExchanges}";
-	$numExchanges = mysqlQuery($sql, SINGLE, 'numExchanges');
+	$numExchanges = (int)mysqlQuery($sql, SINGLE, 'numExchanges');
 
 	return $numExchanges;
 }
@@ -3195,7 +3370,10 @@ function getMatchInfo($matchID = 0){
 		}
 	}
 
-	$sql = "SELECT eventGroups.groupType, eventGroups.groupID, groupName, groupNumber, tournamentID
+
+
+	$sql = "SELECT eventGroups.groupType, eventGroups.groupID, groupName,
+				groupNumber, tournamentID, groupSet
 			FROM eventGroups, eventMatches
 			WHERE eventMatches.matchID = {$matchID}
 			AND eventMatches.groupID = eventGroups.groupID";
@@ -3205,14 +3383,47 @@ function getMatchInfo($matchID = 0){
 	$matchInfo['groupID'] = $result['groupID'];
 	$matchInfo['groupName'] = $result['groupName'];
 	$matchInfo['groupNumber'] = $result['groupNumber'];
-	$matchInfo['tournamentID'] = $result['tournamentID'];
+	$matchInfo['tournamentID'] = (int)$result['tournamentID'];
+	$matchInfo['groupSet'] = (int)$result['groupSet'];
 
-	$sql = "SELECT maxDoubleHits, timeLimit
+
+
+	$sql = "SELECT maxDoubleHits, timeLimit, maximumPoints, maximumExchanges, maxPointSpread
 			FROM eventTournaments
 			WHERE tournamentID = {$matchInfo['tournamentID']}";
 	$data = mysqlQuery($sql, SINGLE);
+
 	$matchInfo['maxDoubles'] = $data['maxDoubleHits'];
 	$matchInfo['timeLimit'] = $data['timeLimit'];
+	$matchInfo['maximumPoints'] = $data['maximumPoints'];
+	$matchInfo['maximumExchanges'] = $data['maximumExchanges'];
+	$matchInfo['maxPointSpread'] = $data['maxPointSpread'];
+
+
+
+	if($matchInfo['matchType'] == 'pool'){
+		$sql = "SELECT attributeType, attributeValue
+				FROM eventAttributes
+				WHERE tournamentID = {$matchInfo['tournamentID']}
+				AND attributeGroupSet = {$matchInfo['groupSet']}
+				AND attributeType IN ('timeLimit','maximumPoints','maximumExchanges','maxPointSpread') ";
+		$setInfo = (array)mysqlQuery($sql, KEY_SINGLES, 'attributeType', 'attributeValue');
+
+		if(isset($setInfo['timeLimit']) == true){
+			$matchInfo['timeLimit'] = $setInfo['timeLimit'];
+		}
+		if(isset($setInfo['maximumPoints']) == true){
+				$matchInfo['maximumPoints'] = $setInfo['maximumPoints'];
+		}
+		if(isset($setInfo['maximumExchanges']) == true){
+				$matchInfo['maximumExchanges'] = $setInfo['maximumExchanges'];
+		}
+		if(isset($setInfo['maxPointSpread']) == true){
+				$matchInfo['maxPointSpread'] = $setInfo['maxPointSpread'];
+		}
+	}
+
+
 
 
 	$sql = "SELECT MAX(exchangeID)
@@ -3229,6 +3440,8 @@ function getMatchInfo($matchID = 0){
 
 	$matchInfo['doubleType'] = $temp['doubleTypeID'];
 	$matchInfo['teamEntry'] = isMatchesByTeam($temp['tournamentID']);
+
+
 
 	$sql = "SELECT locationID
 			FROM logisticsLocationsMatches
@@ -3432,7 +3645,7 @@ function getItemsHiddenByFilters($tournamentID, $filters, $type = null){
 
 /******************************************************************************/
 
-function getMatchCaps($tournamentID){
+function getTournamentMatchCaps($tournamentID){
 
 	$tournamentID = (int)$tournamentID;
 	if($tournamentID == 0){
@@ -3440,8 +3653,7 @@ function getMatchCaps($tournamentID){
 		return;
 	}
 
-	$sql = "SELECT maximumExchanges AS exchanges, maximumPoints AS points,
-			maxPointSpread AS spread, timeLimit
+	$sql = "SELECT maximumExchanges, maximumPoints, maxPointSpread, timeLimit
 			FROM eventTournaments
 			WHERE tournamentID = {$tournamentID}";
 	return ( mysqlQuery($sql, SINGLE) );
@@ -5263,6 +5475,29 @@ function logistics_getEventLocations($eventID, $locationType = null){
 
 /******************************************************************************/
 
+function logistics_getFloorplanFilePath($eventID){
+
+	$eventID = (int)$eventID;
+
+	$basePath = "includes/images/floormaps/{$eventID}";
+
+	/* Don't display anything unless a floor map exists. */
+	if(file_exists($basePath.'.png') == true){
+		$fullPath = $basePath.'.png';
+	} elseif(file_exists($basePath.'.jpg') == true){
+		$fullPath = $basePath.'.jpg';
+	} elseif(file_exists($basePath.'.jpeg') == true){
+		$fullPath = $basePath.'.jpeg';
+	} else {
+		$fullPath = null;
+	}
+
+	return ($fullPath);
+
+}
+
+/******************************************************************************/
+
 function logistics_getRoles(){
 
 	$sql = "SELECT logisticsRoleID, roleName
@@ -5624,9 +5859,8 @@ function getSetAttributes($tournamentID){
 	$sql = "SELECT attributeType, attributeGroupSet, attributeBool, attributeText, attributeValue
 			FROM eventAttributes
 			WHERE tournamentID = {$tournamentID}
-			AND (	attributeType = 'setName'
-					OR attributeType = 'cumulative'
-					OR attributeType = 'normalization')";
+			AND attributeType IN( 'setName','cumulative','normalization',
+				'timeLimit','maximumPoints','maximumExchanges')";
 
 	$result = mysqlQuery($sql, ASSOC);
 
@@ -5641,6 +5875,15 @@ function getSetAttributes($tournamentID){
 				break;
 			case 'normalization':
 				$attributes[$setNumber]['normalization'] = $data['attributeValue'];
+				break;
+			case 'timeLimit':
+				$attributes[$setNumber]['timeLimit'] = $data['attributeValue'];
+				break;
+			case 'maximumPoints':
+				$attributes[$setNumber]['maximumPoints'] = $data['attributeValue'];
+				break;
+			case 'maximumExchanges':
+				$attributes[$setNumber]['maximumExchanges'] = $data['attributeValue'];
 				break;
 			default:
 		}
@@ -5741,18 +5984,28 @@ function getAttendanceFromSchools($eventID){
 
 	$eventID = (int)$eventID;
 
-	if($eventID != 0){
-		$whereClause = "WHERE eventID = {$eventID}";
-	} else {
-		$whereClause = "";
-	}
-
-	$sql = "SELECT schoolID, count(*) AS num
-			FROM eventRoster
-			{$whereClause}
-			GROUP BY schoolID
-			ORDER BY num DESC";
-	$clubTotals = (array)mysqlQuery($sql, KEY_SINGLES, "schoolID", "num");
+	$sql = "SELECT DISTINCT(schoolID),
+				(
+					SELECT COUNT(DISTINCT(rosterID)) AS num
+					FROM eventRoster as eR2
+					WHERE eR.schoolID = eR2.schoolID
+					AND eventID = {$eventID}
+					AND isTeam = 0
+				) AS numTotal,
+				(
+					SELECT COUNT(DISTINCT(rosterID)) AS numFighters
+					FROM eventTournamentRoster AS eTR3
+					INNER JOIN eventTournaments AS eT3 USING(tournamentID)
+					INNER JOIN eventRoster AS eR3 USING(rosterID)
+					WHERE eR.schoolID = eR3.schoolID
+					AND eT3.eventID = {$eventID}
+					AND isTeam = 0
+				) AS numFighters
+			FROM eventRoster AS eR
+			WHERE eventID = {$eventID}
+			AND schoolID IS NOT NULL
+			ORDER BY numTotal DESC, numFighters DESC";
+	$clubTotals = (array)mysqlQuery($sql, ASSOC);
 
 	return ($clubTotals);
 
@@ -7543,7 +7796,7 @@ function getNumEventRegistrations($eventID){
 			FROM eventRoster AS eTR
 			WHERE eventID = {$eventID}
 			AND isTeam = 0";
-	$numRegistrations = (int)mysqlQuery($sql,SINGLE,'numFighters');
+	$numRegistrations = (int)mysqlQuery($sql, SINGLE, 'numFighters');
 
 	return ($numRegistrations);
 

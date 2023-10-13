@@ -25,7 +25,7 @@ if((int)$_SESSION['eventID'] == 0){
 		$rulesInfo = getRulesInfo($_SESSION['rulesID']);
 	} else {
 		$rulesInfo['rulesName'] = "";
-		$rulesInfo['rulesText'] = "";
+		$rulesInfo['rulesText'] = " ";
 
 		// If we went to this page with no rules loaded, refresh page with the first one.
 		if($rulesIDs != [] && ALLOW['EVENT_MANAGEMENT'] == false){
@@ -225,7 +225,7 @@ function editRules($rulesInfo){
 		</div>
 		</div>
 
-		<textarea name='updateRules[rulesText]' required rows='20'><?=$rulesInfo['rulesText']?></textarea>
+		<textarea name='updateRules[rulesText]' class='tiny-mce' required rows='20'><?=$rulesInfo['rulesText']?></textarea>
 
 		<input type='hidden' name='updateRules[rulesID]' value='<?=$_SESSION['rulesID']?>'>
 		<input type='hidden' name='updateRules[eventID]' value='<?=$_SESSION['eventID']?>'>

@@ -963,6 +963,105 @@ function logisticsEditLocations($locationInformation){
 
 /******************************************************************************/
 
+function logisticsUploadFloorplan(){
+
+	$userID = (int)$_SESSION['userID'];
+
+	if(ALLOW['EVENT_MANAGEMENT'] == false){
+		setAlert(USER_ERROR, "Must be logged in to upload images.");
+		return;
+	}
+
+	$MAX_FILE_SIZE_BYTES = 2000000;
+	$MAX_FILE_SIZE_MB = $MAX_FILE_SIZE_BYTES/1000000;
+
+	$imageExtension = strtolower(pathinfo(basename($_FILES["floorplanImageFile"]["name"]),PATHINFO_EXTENSION));
+
+
+	$originalName = basename($_FILES["floorplanImageFile"]["name"]);
+
+	// Check if image file is a actual image or fake image
+
+	if(getimagesize($_FILES["floorplanImageFile"]["tmp_name"]) === false) {
+		setAlert(USER_ERROR, "Invalid upload type.");
+		return;
+	} elseif ($_FILES["floorplanImageFile"]["size"] > $MAX_FILE_SIZE_BYTES) {
+		setAlert(USER_ERROR, "File Size Exceeds {$MAX_FILE_SIZE_MB} MB.");
+		return;
+	}
+
+	switch($imageExtension){
+		case 'jpg':
+		case 'png':
+		case 'jpeg':
+			break;
+		default:
+			setAlert(USER_ERROR, "Only <b>jpg</b>, <b>jpeg</b>, and <b>png</b> files are supported.");
+			return;
+			break;
+	}
+
+	$imageFilePath = "includes/images/floormaps/";
+	$imageFileName = $imageFilePath.$_SESSION['eventID'];
+	$imageFileFull = $imageFileName.".".$imageExtension;
+
+	$uploadSuccess = move_uploaded_file($_FILES["floorplanImageFile"]["tmp_name"], $imageFileFull);
+
+	if ($uploadSuccess == true) {
+		setAlert(USER_ALERT, "The file <b>{$originalName}</b> has been uploaded as the event floorplan.");
+
+		if(file_exists($imageFileName.'.png') == true && $imageFileFull != $imageFileName.'.png'){
+			unlink($imageFileName.'.png');
+		} elseif(file_exists($imageFileName.'.jpg') == true && $imageFileFull != $imageFileName.'.jpg'){
+			unlink($imageFileName.'.jpg');
+		} elseif(file_exists($imageFileName.'.jpeg') == true && $imageFileFull != $imageFileName.'.jpeg'){
+			unlink($imageFileName.'.jpeg');
+		} else {
+
+		}
+
+	} else {
+
+		setAlert(USER_ALERT, "Unknown error in file upload.");
+		if(ALLOW['SOFTWARE_ADMIN'] == TRUE){
+			setAlert(SYSTEM, "Not uploaded because of error #".$_FILES["file"]["error"]);
+		}
+
+		return;
+	}
+
+}
+
+/******************************************************************************/
+
+function logisticsdeleteEventFloorplan(){
+
+	if(ALLOW['EVENT_MANAGEMENT'] == false){
+		setAlert(USER_ERROR, "Must be logged in to upload images.");
+		return;
+	}
+
+	$imageFilePath = "includes/images/floormaps/";
+	$imageFileName = $imageFilePath.$_SESSION['eventID'];
+
+	$eventID = $_SESSION['eventID'];
+
+	if(file_exists($imageFileName.'.png') == true){
+		unlink($imageFileName.'.png');
+	} elseif(file_exists($imageFileName.'.jpg') == true){
+		unlink($imageFileName.'.jpg');
+	} elseif(file_exists($imageFileName.'.jpeg') == true){
+		unlink($imageFileName.'.jpeg');
+	} else {
+
+	}
+
+	setAlert(USER_ERROR, "Floorplan image deleted.");
+
+}
+
+/******************************************************************************/
+
 function logisticsCheckInMatchStaffFromShift($info){
 
 	$matchID = (int)$info['matchID'];
@@ -2693,7 +2792,7 @@ function addTeamMembers($teamInfo, $tournamentID){
 
 	$teamID = (int)$teamInfo['teamID'];
 
-	foreach($teamInfo['order'] as $tableID => $teamOrder){
+	foreach((array)$teamInfo['order'] as $tableID => $teamOrder){
 
 		$tableID = (int)$tableID;
 		$teamOrder = (int)$teamOrder;
@@ -7564,6 +7663,72 @@ function updatePoolSets(){
 				({$tournamentID}, 'normalization', {$groupSet}, {$normalization})";
 		mysqlQuery($sql, SEND);
 		$_SESSION['updatePoolStandings'][$tournamentID] = ALL_GROUP_SETS;
+	}
+
+// Time Limit
+	$sql = "DELETE FROM eventAttributes
+			WHERE tournamentID = {$tournamentID}
+			AND attributeType = 'timeLimit'";
+	mysqlQuery($sql, SEND);
+
+	foreach((array)$_POST['timeLimit'] as $groupSet => $timeLimit){
+
+		$groupSet = (int)$groupSet;
+
+		$timeLimit = (int)$timeLimit;
+		if($timeLimit == 0){ continue; }
+		if($groupSet > $numGroupSets){break;}
+
+		$sql = "INSERT INTO eventAttributes
+				(tournamentID, attributeType, attributeGroupSet, attributeValue)
+				VALUES
+				({$tournamentID}, 'timeLimit', {$groupSet}, {$timeLimit})";
+		mysqlQuery($sql, SEND);
+
+	}
+
+// Maximum Points
+	$sql = "DELETE FROM eventAttributes
+			WHERE tournamentID = {$tournamentID}
+			AND attributeType = 'maximumPoints'";
+	mysqlQuery($sql, SEND);
+
+	foreach((array)$_POST['maximumPoints'] as $groupSet => $maximumPoints){
+
+		$groupSet = (int)$groupSet;
+
+		$maximumPoints = (int)$maximumPoints;
+		if($maximumPoints == 0){ continue; }
+		if($groupSet > $numGroupSets){break;}
+
+		$sql = "INSERT INTO eventAttributes
+				(tournamentID, attributeType, attributeGroupSet, attributeValue)
+				VALUES
+				({$tournamentID}, 'maximumPoints', {$groupSet}, {$maximumPoints})";
+		mysqlQuery($sql, SEND);
+
+	}
+
+// Exchange Cap
+	$sql = "DELETE FROM eventAttributes
+			WHERE tournamentID = {$tournamentID}
+			AND attributeType = 'maximumExchanges'";
+	mysqlQuery($sql, SEND);
+
+	foreach((array)$_POST['maximumExchanges'] as $groupSet => $maximumExchanges){
+
+		$groupSet = (int)$groupSet;
+
+		$maximumExchanges = (int)$maximumExchanges;
+		if($maximumExchanges == 0){ continue; }
+		if($groupSet > $numGroupSets){break;}
+
+		$sql = "INSERT INTO eventAttributes
+				(tournamentID, attributeType, attributeGroupSet, attributeValue)
+				VALUES
+				({$tournamentID}, 'maximumExchanges', {$groupSet}, {$maximumExchanges})";
+		mysqlQuery($sql, SEND);
+
 	}
 
 // Change number of pool sets
