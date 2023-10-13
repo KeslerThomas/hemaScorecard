@@ -81,6 +81,7 @@ if($_SESSION['eventID'] == null){
 				edit_tournamentOverrideDoubles($tournamentID);
 				edit_tournamentTies($tournamentID);
 				edit_tournamentReverseScore($tournamentID);
+				edit_tournamentTargetPriority($tournamentID);
 
 			// Match Display --------------------------
 				edit_tournamentOptionsRow("Match Display","option-match-display");

@@ -1607,6 +1607,64 @@ function edit_tournamentReverseScore($tournamentID){
 
 <?php }
 
+/****************************************************************/
+
+
+	function edit_tournamentTargetPriority($tournamentID){
+// Select menu for whether or not the tournament uses Target Priority,
+// If there are two in-tempo hits, the hit with higher priority scores with a afterblow deduction
+
+	$tournamentID = (int)$tournamentID;
+	$formatID = FORMAT_MATCH;
+	$usesTargetPriority = NO_TARGETPRIORITY;
+
+	if($tournamentID != 0){
+		$sql = "SELECT usesTargetPriority, formatID
+				FROM eventTournaments
+				WHERE tournamentID = {$tournamentID}";
+		$info = mysqlQuery($sql, SINGLE);
+
+		$usesTargetPriority = $info['usesTargetPriority'];
+		$formatID = $info['formatID'];
+	}
+
+	if($formatID != FORMAT_MATCH){
+		$hide = 'hidden';
+	} else {
+		$hide = '';
+	}
+
+	?>
+
+<!-- Start display -->
+	<tr class='option-sparring <?=$hide?>'>
+		<td class='shrink-column'>
+			<div class='shrink'>
+				Use Target Priority
+				<?php tooltip("<strong>Target Priority</strong><BR>
+								If there are two in-tempo hits, the hit with higher priority scores with a afterblow deduction<BR>
+								"); ?>
+			</div>
+		</td>
+
+		<td>
+			<div class='grid-x grid-padding-x'>
+			<select name='updateTournament[usesTargetPriority]' class='shrink'
+					onchange="enableTournamentButton('<?=$tournamentID?>')"
+					id='targetPriority_Select<?=$tournamentID?>'>
+
+					<option <?=optionValue(0,$usesTargetPriority)?> >No (Normal)</option>
+					<option <?=optionValue(1,$usesTargetPriority)?> >Target Priority</option>
+			</select>
+			</div>
+		</td>
+	</tr>
+
+<?php }
+
+
+
+
 /******************************************************************************/
 
 function edit_tournamentOverrideDoubles($tournamentID = 0){

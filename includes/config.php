@@ -99,6 +99,9 @@
 	define("REVERSE_SCORE_GOLF",1);
 	define("REVERSE_SCORE_INJURY",2);
 
+	define("NO_TARGETPRIORITY",0);
+	define("YES_TARGETPRIORITY",1);
+
 	define("ATTACK_CONTROL_DB",9);
 	define("ATTACK_AFTERBLOW_DB",13);
 

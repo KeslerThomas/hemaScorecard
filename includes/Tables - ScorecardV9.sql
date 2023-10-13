@@ -33,7 +33,9 @@ CREATE TABLE `eventAttacks` (
   `attackTarget` int(10) UNSIGNED DEFAULT NULL,
   `attackType` int(10) UNSIGNED DEFAULT NULL,
   `attackPoints` float NOT NULL DEFAULT '0',
-  `attackNumber` int(11) DEFAULT NULL
+  `attackNumber` int(11) DEFAULT NULL,
+  `attackPriority` int(11) DEFAULT '0'
+
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- --------------------------------------------------------
@@ -622,7 +624,8 @@ CREATE TABLE `eventTournaments` (
   `hideFinalResults` tinyint(1) NOT NULL DEFAULT '0',
   `numSubMatches` int(11) NOT NULL DEFAULT '0',
   `subMatchMode` int(11) NOT NULL DEFAULT '0',
-  `requireSignOff` tinyint(1) NOT NULL DEFAULT '0'
+  `requireSignOff` tinyint(1) NOT NULL DEFAULT '0',
+  `usesTargetPriority` tinyint(1) NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- --------------------------------------------------------

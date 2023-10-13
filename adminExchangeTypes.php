@@ -91,7 +91,7 @@ if($_SESSION['eventID'] == null){
 	<form method='POST'>
 		<div class='grid-x grid-margin-x'>
 
-			<?php if(isDeductiveAfterblow($_SESSION['tournamentID']) == true): ?>
+			<?php if(isDeductiveAfterblow($_SESSION['tournamentID']) == true ||  isTargetPriority($_SESSION['tournamentID']) == true  ): ?>
 				<div class='input-group shrink cell no-bottom'>
 					<span class='input-group-label no-bottom'>
 						Afterblow
@@ -200,6 +200,10 @@ function displayModeIndividual($formLock){
 			<th>Attack Target</th>
 			<th>Attack Type</th>
 			<th>Points</th>
+
+			<?php if( isTargetPriority($_SESSION['tournamentID']) == true  ): ?>
+				<th>Attack Priority</th>
+			<?php endif ?>
 		</tr>
 
 	<!-- Old Attacks -->
@@ -262,7 +266,18 @@ function displayModeIndividual($formLock){
 						class='no-bottom' >
 				</td>
 
+			<?php if( isTargetPriority($_SESSION['tournamentID']) == true  ): ?>
+			<!-- Priority -->
+				<td>
+					<input type='number' name='newAttack[<?=$i?>][attackPriority]' step=0.1 min=0 max=30
+						value='<?=$attack['attackPriority']?>'
+						class='no-bottom' >
+				</td>
+			<?php endif ?>
+
+
 			</tr>
+
 		<?php endforeach ?>
 
 
@@ -321,6 +336,16 @@ function displayModeIndividual($formLock){
 						step=0.1 min=0 max=30 placeholder='leave blank to delete'
 						class='no-bottom'>
 				</td>
+
+			<!-- Priority -->
+				<?php if( isTargetPriority($_SESSION['tournamentID']) == true  ): ?>
+
+				<td>
+					<input type='number' name='newAttack[<?=$i?>][attackPriority]'
+						step=0.1 min=0 max=30 
+						class='no-bottom'>
+				</td>
+				<?php endif ?>
 
 			</tr>
 		<?php endfor ?>

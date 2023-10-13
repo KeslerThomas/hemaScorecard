@@ -655,7 +655,7 @@ function getAttackAttributes($tableID){
 		return null;
 	}
 
-	$sql = "SELECT attackPrefix, attackType, attackTarget, attackPoints
+	$sql = "SELECT attackPrefix, attackType, attackTarget, attackPoints, attackPriority
 			FROM eventAttacks
 			WHERE tableID = {$tableID}";
 	return mysqlQuery($sql, SINGLE);
@@ -5940,7 +5940,7 @@ function getTournamentAttacks($tournamentID){
 		return;
 	}
 
-	$sql = "SELECT attackTarget, attackType, attackPoints, attackPrefix, tableID
+	$sql = "SELECT attackTarget, attackType, attackPoints, attackPrefix, attackPriority, tableID
 			FROM eventAttacks
 			WHERE tournamentID = {$tournamentID}
 			ORDER BY attackNumber ASC";
@@ -8554,6 +8554,30 @@ function isDeductiveAfterblow($tournamentID){
 }
 
 /******************************************************************************/
+
+function isTargetPriority($tournamentID){
+
+	$tournamentID = (int)$tournamentID;
+	if($tournamentID == 0){
+		setAlert(SYSTEM,"No tournamentID in isTargetPriority()");
+		return;
+	}
+
+	$sql = "SELECT usesTargetPriority
+			FROM eventTournaments
+			WHERE tournamentID = {$tournamentID}";
+	$id = mysqlQuery($sql, SINGLE, 'usesTargetPriority');
+
+	if($id == YES_TARGETPRIORITY){
+		return true;
+	} else {
+		return false;
+	}
+
+}
+
+/******************************************************************************/
+
 
 function isTournamentPrivate($tournamentID){
 

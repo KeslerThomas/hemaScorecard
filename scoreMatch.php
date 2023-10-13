@@ -1451,9 +1451,21 @@ function scoreSelectDropDown($id, $pre, $isReverseScore){
 		<option value=''></option>
 		<option value='noQuality'>No Quality</option>
 		<?php foreach((array)$attacks as $a):
-			 ?>
+
+					 if(isTargetPriority($_SESSION['tournamentID']) )
+					 {
+					 ?>
+					 <option value='<?=$a['tableID']?>'><?=$a['attackText']?>  Priority  <?=$a['attackPriority']?></option>
+					 <?php
+					 }
+					 else {
+		?>
+			
+
 			<option value='<?=$a['tableID']?>'><?=$a['attackText']?></option>
-		<?php endforeach ?>
+
+
+		<?php  } endforeach ?>
 	</select>
 
 <?php

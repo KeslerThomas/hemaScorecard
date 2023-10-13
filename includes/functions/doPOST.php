@@ -1430,6 +1430,26 @@ function fullAfterblowScoring($matchInfo,$scoring, $lastExchangeID){
 		$score2 = @$at2['attackPoints']; // Passes null on purpose
 		$scoring[$id2]['hit'] = $score2;
 
+
+
+		if(isTargetPriority($_SESSION['tournamentID']))
+		{
+			$priority1 = $at1['attackPriority'];
+			$priority2 = $at2['attackPriority'];
+
+		if((int) $priority1 > (int)$priority2){
+			$rType = @$at1['attackType'];
+			$rTarget = @$at1['attackTarget'];
+			$rPrefix = @$at1['attackPrefix'];
+		} elseif((int)$priority2 > (int) $priority1 ) {
+			$rType = @$at2['attackType'];
+			$rTarget = @$at2['attackTarget'];
+			$rPrefix = @$at2['attackPrefix'];
+		} else {
+			// Don't add attack info on equal scores
+		}
+		}
+		else{
 		if((int)$score1 > (int)$score2){
 			$rType = @$at1['attackType'];
 			$rTarget = @$at1['attackTarget'];
@@ -1441,7 +1461,7 @@ function fullAfterblowScoring($matchInfo,$scoring, $lastExchangeID){
 		} else {
 			// Don't add attack info on equal scores
 		}
-
+		}
 	} else {
 		$_SESSION['alertMessages']['systemErrors'][] = "No scoreLookupMode in fullAfterblowScoring()";
 		return;
@@ -1473,7 +1493,42 @@ function fullAfterblowScoring($matchInfo,$scoring, $lastExchangeID){
 		}
 
 	} else {//both hit
+			if(isTargetPriority($_SESSION['tournamentID']))
+			{
+				$priority1 = $at1['attackPriority'];
+				$priority2 = $at2['attackPriority'];
 
+				if($priority1 > $priority2)
+				{
+					$rosterID = $id1;
+					$otherID = $id2;
+					$scoreDeduction = (int)getAfterblowPointValue($_SESSION['tournamentID']);
+				} 
+				else if($priority2 > $priority1)
+				{
+					$rosterID = $id2;
+					$otherID = $id1;
+					$scoreDeduction = (int)getAfterblowPointValue($_SESSION['tournamentID']);
+				}
+				else
+				{
+					if($matchInfo['fighter2score'] > $matchInfo['fighter1score'])
+					{
+						$rosterID = $id2;
+						$otherID = $id1;
+					} 
+					else 
+					{
+						$rosterID = $id1;
+						$otherID = $id2;
+					}
+					$scoreDeduction = $scoring[$rosterID]['hit'];
+				}
+			$scoreValue = 	$scoring[$rosterID]['hit'];
+			$exchangeType = 'afterblow';
+			}	
+
+		else{
 		//attributes the strike to the fighter with the higher value hit
 		if($score1 > $score2){
 			$rosterID = $id1;
@@ -1492,13 +1547,14 @@ function fullAfterblowScoring($matchInfo,$scoring, $lastExchangeID){
 
 		}
 
+		
 		$scoreValue = 	$scoring[$rosterID]['hit'];
 		$scoreDeduction = $scoring[$otherID]['hit'];
 		$exchangeType = 'afterblow';
 
 		// sets the score deduction to the string 'null' for SQL storage
 		if($scoreDeduction == ""){$scoreDeduction = 'null';}
-
+		}
 	}
 
 	if(isReverseScore($matchInfo['tournamentID']) > REVERSE_SCORE_NO){

@@ -136,6 +136,10 @@ function addAttacksToTournament($tournamentID = null){
 		if($a['attackPoints'] == ''){
 			continue;
 		}
+		if($a['attackPriority'] == ''){
+			$a['attackPriority'] = 'NULL';
+		}
+
 		if($a['attackType'] == ''){
 			$aType = 'NULL';
 		} else {
@@ -162,9 +166,9 @@ function addAttacksToTournament($tournamentID = null){
 
 
 		$sql = "INSERT INTO eventAttacks
-				(tournamentID, attackTarget, attackType, attackPoints, attackNumber, attackPrefix)
+				(tournamentID, attackTarget, attackType, attackPoints, attackNumber, attackPrefix, attackPriority)
 				VALUES
-				({$tournamentID}, {$aTarget}, {$aType}, {$a['attackPoints']}, {$aNum}, {$aPrefix})";
+				({$tournamentID}, {$aTarget}, {$aType}, {$a['attackPoints']}, {$aNum}, {$aPrefix}, {$a['attackPriority']})";
 		mysqlQuery($sql, SEND);
 	}
 
@@ -5689,6 +5693,8 @@ function updateEventTournaments($tournamentID, $updateType, $formInfo){
 	$settings['subMatchMode'] = (int)$formInfo['subMatchMode'];
 	$settings['requireSignOff'] = (int)$formInfo['requireSignOff'];
 
+		$settings['usesTargetPriority'] = (int)$formInfo['usesTargetPriority'];
+
 	switch($updateType){
 		case 'add':
 			$tournamentID = addNewTournament($settings);
@@ -5845,7 +5851,8 @@ function addNewTournament($settings){
 				{$settings['hideFinalResults']},
 				{$settings['numSubMatches']},
 				{$settings['subMatchMode']},
-				{$settings['requireSignOff']}
+				{$settings['requireSignOff']},
+				{$settings['usesTargetPriority']}
 			)";
 
 	mysqlQuery($sql, SEND);
@@ -5930,8 +5937,9 @@ function updateExistingTournament($tournamentID, $settings){
 				hideFinalResults = {$settings['hideFinalResults']},
 				numSubMatches = {$settings['numSubMatches']},
 				subMatchMode = {$settings['subMatchMode']},
-				requireSignOff = {$settings['requireSignOff']}
-			WHERE tournamentID = {$tournamentID}";
+				requireSignOff = {$settings['requireSignOff']},
+				usesTargetPriority = {$settings['usesTargetPriority']}
+				WHERE tournamentID = {$tournamentID}";
 
 	mysqlQuery($sql, SEND);
 
@@ -6097,8 +6105,8 @@ function importTournamentAttacks($config){
 
 
 	$sql = "INSERT INTO eventAttacks
-			(tournamentID, attackPrefix, attackTarget, attackType, attackPoints, attackNumber)
-				SELECT {$targetID}, attackPrefix, attackTarget, attackType, attackPoints, attackNumber
+			(tournamentID, attackPrefix, attackTarget, attackType, attackPoints, attackNumber, attackPriority)
+				SELECT {$targetID}, attackPrefix, attackTarget, attackType, attackPoints, attackNumber, attackPriority
 				FROM eventAttacks
 				WHERE tournamentID = {$sourceID}";
 	mysqlQuery($sql, SEND);
